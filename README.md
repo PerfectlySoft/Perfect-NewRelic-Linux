@@ -52,7 +52,7 @@ This project is only compatible with Ubuntu 16.04 and Swift 3.1 Tool Chain.
 Please use PA to import this project, otherwise an install script is available for Ubuntu 16.04:
 
 ```
-$ git clone https://github.com/PerfectlySoft/Perfect-libNewRelic-linux.git
+$ git clone https://github.com/PerfectlySoft/Perfect-NewRelic-linux.git
 $ cd Perfect-libNewRelic-linux
 $ sudo ./install.sh
 ```
@@ -60,7 +60,7 @@ $ sudo ./install.sh
 Configure Package.swift:
 
 ``` swift
-.Package(url: "https://github.com/PerfectlySoft/Perfect-libNewRelic-linux.git", majorVersion: 1)
+.Package(url: "https://github.com/PerfectlySoft/Perfect-NewRelic-linux.git", majorVersion: 1)
 ```
 
 Import library into your code:
