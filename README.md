@@ -256,8 +256,11 @@ Segments in a transaction can be either Generic, DataStore or External, see demo
 // assume that t is a transaction
 let root = try t.segBeginGeneric(name: "my-segment")
 	// note: using default SQL Obfuscation method and default SQL trace rollup
-	let sub = try t.segBeginDataStore(parentSegmentId: root, table: "my-table", operation: .INSERT, sql: "INSERT INTO table(field) value('000-000-0000')")
-		let s2 = try t.segBeginExternal(parentSegmentId: sub, host: "perfect.org", name: "my-seg")
+	let sub = try t.segBeginDataStore(parentSegmentId: root, 
+	table: "my-table", operation: .INSERT, 
+	sql: "INSERT INTO table(field) value('000-000-0000')")
+		let s2 = try t.segBeginExternal(parentSegmentId: sub, 
+		host: "perfect.org", name: "my-seg")
 		try t.segEnd(s2)
 	try t.segEnd(sub)
 try t.segEnd(root)
