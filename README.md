@@ -69,7 +69,7 @@ Import library into your code:
 import PerfectNewRelic
 ```
 
-Aside of Swift - C conversion, document can be found on [New Relic Agent SDK](https://docs.newrelic.com/docs/agents/agent-sdk)
+Aside of Swift - C conversion, document can be found on [New Relic Agent SDK](https://docs.newrelic.com/docs/agents/agent-sdk/using-agent-sdk/using-agent-sdk)
 
 ## Issues
 
