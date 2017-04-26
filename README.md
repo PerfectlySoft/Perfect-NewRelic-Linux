@@ -57,7 +57,7 @@ $ cd Perfect-libNewRelic-linux
 $ sudo ./install.sh
 ```
 
-During the installation, it will ask for license key, application name, language and its version. Then it will install the command line `newrelic-collector-client-daemon` as a service which you can find the configuration on `/usr/local/etc/newrelic.service`
+During the installation, it will automatically ask for **license key**, **application name**, language and its version. Then it will install the command line `newrelic-collector-client-daemon` as a service which you can find the configuration on `/usr/local/etc/newrelic.service`.
 
 Configure Package.swift:
 
