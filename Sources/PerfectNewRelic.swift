@@ -54,10 +54,6 @@ public class NewRelic {
 
   public static let AUTOSCOPE = 1
   public static let ROOT_SEGMENT = 0
-  public static let SELECT = "select"
-  public static let INSERT = "insert"
-  public static let UPDATE = "update"
-  public static let DELETE = "delete"
 
   internal let libClientDLL = "libnewrelic-collector-client.so"
   internal let libCommonDLL = "libnewrelic-common.so"
@@ -93,7 +89,7 @@ public class NewRelic {
   typealias funcLLSL = @convention(c) (Int32, Int32, UnsafePointer<Int8>) -> Int32
   internal var newrelic_segment_generic_begin: funcLLSL
 
-  typealias funcL2S4CL = @convention(c) (Int32, Int32, UnsafePointer<Int8>, UnsafePointer<Int8>, UnsafePointer<Int8>, UnsafePointer<Int8>, funcSS ) -> Int32
+  typealias funcL2S4CL = @convention(c) (Int32, Int32, UnsafePointer<Int8>, UnsafePointer<Int8>, UnsafePointer<Int8>, UnsafePointer<Int8>?, funcSS ) -> Int32
   internal var newrelic_segment_datastore_begin: funcL2S4CL
 
   typealias funcL2S2L = @convention(c) (Int32, Int32, UnsafePointer<Int8>, UnsafePointer<Int8>) -> Int32
@@ -136,7 +132,7 @@ public class NewRelic {
   /// Constructor
   /// - parameters:
   ///   - libraryPath: default is /usr/local/lib, customize if need
-  ///   - mode: UsageMode, .DAEMON (default) or .EMBEDDED. 
+  ///   - mode: UsageMode, .DAEMON (default) or .EMBEDDED.
   public init(_ libraryPath: String = "/usr/local/lib", mode: UsageMode = .DAEMON) throws {
     guard
     let lib1 = dlopen("\(libraryPath)/\(libClientDLL)", RTLD_LAZY),
@@ -252,36 +248,9 @@ public class NewRelic {
     newrelic_enable_instrumentation(enabled ? 1 :  0)
   }//end func
 
-  /// A basic literal replacement obfuscator that strips the SQL string literals
-  /// (values between single or double quotes) and numeric sequences, replacing
-  /// them with the ? character.
-  ///
-  /// For example:
-  ///
-  /// This SQL:
-  /// 	SELECT * FROM table WHERE ssn=‘000-00-0000’
-  ///
-  /// obfuscates to:
-  /// 		SELECT * FROM table WHERE ssn=?
-  ///
-  /// Because our default obfuscator just replaces literals, there could be
-  /// cases that it does not handle well. For instance, it will not strip out
-  /// comments from your SQL string, it will not handle certain database-specific
-  /// language features, and it could fail for other complex cases.
-  ///
-  /// - parameters:
-  ///   - raw: a raw sql string
-  /// - throws:
-  ///   Exception
-  /// - returns:
-  ///   obfuscated sql string
-  public func obfuscate(raw: String) -> String {
-    return String(validatingUTF8: newrelic_basic_literal_replacement_obfuscator(raw)) ?? ""
-  }//end func
-
   /// Register a function to be called whenever the status of the CollectorClient changes.
   /// - parameters:
-  ///   - handler: status callback function to register
+  ///   - callback: status callback function to register
   /// - throws:
   ///   Exception
   public func registerStatus(callback: @escaping (Int32) -> Void ) {
@@ -325,10 +294,15 @@ public class Transaction {
   public let id: Int32
   internal var parent: NewRelic
 
-  public typealias StringCallBack = (String) -> String
-  public static var SQLObfuscator: StringCallBack = { $0 }
+  public enum SQLOperations: String {
+  case SELECT = "select", INSERT = "insert", UPDATE = "update", DELETE = "delete"
+  }//end enum
 
-  /// Identify the beginning of a transaction.
+  // NOTE: using the default obfuscator
+  // public typealias StringCallBack = (String) -> String
+  // public static var SQLObfuscator: StringCallBack = { $0 }
+
+  /// Constructor of Transaction Class
   /// - parameters:
   ///   - instance: NewRelic instance
   ///   - webType: true for WebTransaction and false for other. default is true.
@@ -385,7 +359,7 @@ public class Transaction {
   ///   - exceptionType: type of exception that occurred
   ///   - errorMessage: error message
   ///   - stackTrace: stacktrace when error occurred
-  ///   - stackFrameDelimiter  delimiter to split stack trace into frames
+  ///   - stackFrameDelimiter: delimiter to split stack trace into frames
   /// - throws:
   ///   Exception
   public func setErrorNotice(exceptionType: String, errorMessage: String, stackTrace: String, stackFrameDelimiter: String) throws {
@@ -413,9 +387,9 @@ public class Transaction {
   ///
   /// SQL Obfuscation
   /// ===============
-  /// If you supply the sql_obfuscator parameter with NULL, the supplied SQL string
-  /// will go through our basic literal replacement obfuscator that strips the SQL
-  /// string literals (values between single or double quotes) and numeric
+  /// The supplied SQL string will go through our basic literal replacement
+  /// obfuscator that strips the SQL string literals
+  /// (values between single or double quotes) and numeric
   /// sequences, replacing them with the ? character. For example:
   ///
   /// This SQL:
@@ -429,34 +403,19 @@ public class Transaction {
   /// comments from your SQL string, it will not handle certain database-specific
   /// language features, and it could fail for other complex cases.
   ///
-  /// If this level of obfuscation is not sufficient, you can supply your own
-  /// custom obfuscator via the sql_obfuscator parameter.
-  ///
   /// SQL Trace Rollup
   /// ================
   /// The agent aggregates similar SQL statements together using the supplied
-  /// sqlTraceRollupName.
-  ///
-  /// To make the most out of this feature, you should either (1) supply the
-  /// sqlTraceRollupName parameter with a name that describes what the SQL is
-  /// doing, such as "get_user_account" or (2) pass it NULL, in which case
-  /// it will use the sql obfuscator to generate a name.
+  /// sqlTraceRollupName automatically.
   /// - parameters:
   ///   - parentSegmentId: id of parent segment, root segment by default.
   ///   - table: name of the database table
   ///   - operation: name of the sql operation
   ///   - sql: the sql string
-  ///   - sqlTraceRollupName: the rollup name for the sql trace
-  ///   - sqlObfuscator:  a function pointer that takes sql and obfuscates it
   /// - throws:
   ///   Exception
-  public func segBeginDataStore(parentSegmentId: Int = NewRelic.ROOT_SEGMENT, table: String, operation: String, sql: String, sqlTraceRollupName: String, sqlObfuscator: @escaping StringCallBack ) throws -> Int {
-    Transaction.SQLObfuscator = sqlObfuscator
-    let r = parent.newrelic_segment_datastore_begin(id, Int32(parentSegmentId), table, operation, sql, sqlTraceRollupName, {
-      pstring in
-      let r = Transaction.SQLObfuscator(String(cString: pstring))
-      return unsafeBitCast(strdup(r), to: UnsafePointer<Int8>.self)
-    })
+  public func segBeginDataStore(parentSegmentId: Int = NewRelic.ROOT_SEGMENT, table: String, operation: SQLOperations, sql: String) throws -> Int {
+    let r = parent.newrelic_segment_datastore_begin(id, Int32(parentSegmentId), table, operation.rawValue, sql, nil, parent.newrelic_basic_literal_replacement_obfuscator)
     guard r > 0 else { throw parent.asError(r) }
     return Int(r)
   }

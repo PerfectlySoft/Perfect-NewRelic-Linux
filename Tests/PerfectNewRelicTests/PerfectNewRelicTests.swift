@@ -38,8 +38,6 @@ class PerfectNewRelicTests: XCTestCase {
             default: print("shutdown")
             }
          }
-         let s = nr.obfuscate(raw: "SELECT * FROM table WHERE ssn=‘000-00-0000’")
-         print(s)
          nr.enableInstrumentation(false)
          try nr.recordMetric(name: "my-var", value: 0.1)
          try nr.recordCPU(timeSeconds: 5.0, usagePercent: 1.2)
@@ -50,16 +48,12 @@ class PerfectNewRelicTests: XCTestCase {
             attributes: ["tom": "jerry", "pros":"cons", "muddy":"puddels"],
             maxTraceSegments: 2000)
          try t.setErrorNotice(exceptionType: "my-panic-type-1", errorMessage: "my-notice", stackTrace: "my-stack", stackFrameDelimiter: "<frame>")
-         let s0 = try t.segBeginGeneric(parentSegmentId: 100, name: "my-segment")
-         try t.segEnd(s0)
-         let s1 = try t.segBeginDataStore(parentSegmentId: 100, table: "my-table", operation: "my-op", sql: "SELECT * FROM table", sqlTraceRollupName: "my-rollback") {
-           obfused in
-           print(obfused)
-           return obfused
-         }//end
-         try t.segEnd(s1)
-         let s2 = try t.segBeginExternal(parentSegmentId: 100, host: "perfect.org", name: "my-seg")
+         let root = try t.segBeginGeneric(name: "my-segment")
+         let sub = try t.segBeginDataStore(parentSegmentId: root, table: "my-table", operation: .INSERT, sql: "INSERT INTO table(field) value('000-000-0000')")
+         let s2 = try t.segBeginExternal(parentSegmentId: sub, host: "perfect.org", name: "my-seg")
          try t.segEnd(s2)
+         try t.segEnd(sub)
+         try t.segEnd(root)
          try nr.shutdown(reason: "no reason")
        }catch (let err) {
          switch err {

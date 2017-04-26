@@ -75,7 +75,7 @@ Aside of Swift - C conversion, document can be found on [New Relic Agent SDK](ht
 
 Post Installation & Configuration can be found on [New Relic - Configuring the Agent SDK](https://docs.newrelic.com/docs/agents/agent-sdk/installation-configuration/configuring-agent-sdk), equivalent Swift codes listed below:
 
-### Running in embedded-mode
+### Running in Embedded-mode
 
 - To setup NewRelic instance in embedded-mode properly, program must explicitly declare the usage mode as `.EMBEDDED`, which means to send data to New Relic when transactions are completed, equivalent to `newrelic_register_message_handler(newrelic_message_handler);` defined in the original documentation:
 
@@ -142,26 +142,132 @@ Custom metrics give you a way to record arbitrary metrics about your application
 try nr.recordMetric(name: "ActiveUsers", value: 25)
 ```
  
-### Obfuscating
+## API Quick Help
 
-Perfect NewRelic framework provides the `obfuscate()` function as demo below:
+### NewRelic Class Methods
 
-``` swift 
-let sql = nr.obfuscate(raw: "SELECT * FROM table WHERE ssn=‘000-00-0000’")
-// the sql value now will be:
-// SELECT * FROM table WHERE ssn=‘?-?-?’
-```
-
-## API Reference
-
-### Constructor
-
-Description| NewRelic Class Constructor
+Function| `init()`
 ----|------
 Demo|`let nr = try NewRelic(mode: .EMBEDDED)`
+Description| NewRelic Class Constructor
 Parameters|- libraryPath: default is `/usr/local/lib`, customize if need <br> - mode: UsageMode, `.DAEMON` (by default) or `.EMBEDDED.` 
 Returns| Instance of NewRelic Class
 
+Function |`register()`
+----|------
+Demo|`try nr.register(license: "my-lic", appName: "my-app")`
+Description| Start the CollectorClient and the harvester thread that sends application performance data to New Relic once a minute.
+Parameters|- license:  New Relic account license key <br> - appName:  name of instrumented application <br> - language:  name of application programming language, default is "Swift" <br> - version:  application programming language version, "3.1" by default
+
+Function |`registerStatus()`
+---|---
+Demo|See [Running in Embedded-mode](### Running in Embedded-mode)
+Description|Register a function to be called whenever the status of the CollectorClient changes.
+Parameters|  - callback: status callback function to register
+
+Function | `enableInstrumentation()`
+---|---
+Description| See [Limiting or disabling Agent SDK settings](## Limiting or disabling Agent SDK settings)
+
+Function | `recordMetric()`
+---|---
+Demo|`try nr.recordMetric(name: "ActiveUsers", value: 25)`
+Description|Record a custom metric.
+Parameters| - name: name of the metric. <br> - value: value of the metric.
+
+Function | `recordCPU()`
+---|---
+Demo|`try nr.recordCPU(timeSeconds: 5.0, usagePercent: 1.2)`
+Description|Record CPU user time in seconds and as a percentage of CPU capacity.
+Parameters| - timeSeconds: Double, number of seconds CPU spent processing user-level code <br> - usagePercent: Double, CPU user time as a percentage of CPU capacity
+
+Function | `recordMemory()`
+---|---
+Demo|`try nr.recordMemory(megabytes: 32)`
+Description|Record the current amount of memory being used.
+Parameters| - megabytes: Double, amount of memory currently being used
+
+Function | `shutdown()`
+---|---
+Demo|try nr.shutdown(reason: "no reason")
+Description| Tell the CollectorClient to shutdown and stop reporting application performance data to New Relic.
+Parameters|- reason: String, reasons for shutdown request
+
+### Transaction
+
+Transaction in Perfect NewRelic has been defined as a class, with construction as below:
+
+``` swift
+public init(_ instance: NewRelic,
+    webType: Bool? = nil,
+    category: String? = nil,
+    name: String? = nil,
+    url: String? = nil,
+    attributes: [String: String],
+    maxTraceSegments: Int? = nil
+  ) throws
+```
+
+#### Constructor parameters:
+
+- instance: NewRelic instance, **required**.
+- webType: **optional**. true for WebTransaction and false for other. default is true.
+- category: **optional**. name of the transaction category, default is 'Uri'
+- name: **optional**. transaction name
+- url: **optional**. request url for a web transaction
+- attributes: **optional**. transaction attributes, pair of "name: value"
+- maxTraceSegments: **optional**. Set the maximum number of trace segments allowed in a transaction trace. By default, the maximum is set to 2000, which means the first 2000 segments in a transaction will create trace segments if the transaction exceeds the trace threshold (4 x apdex_t).
+
+#### Demo of Transaction Class Initialization:
+
+``` swift
+let nr = NewRelic()
+let t = try Transaction(nr, webType: false,
+	category: "my-class-1", name: "my-transaction-name",
+	url: "http://localhost",
+	attributes: ["tom": "jerry", "pros":"cons", "muddy":"puddels"],
+	maxTraceSegments: 2000)
+```
+
+#### Error Notice
+
+Perfect NewRelic provides `setErrorNotice()` function for transactions:
+
+``` swift
+try t.setErrorNotice(
+	exceptionType: "my-panic-type-1", 
+	errorMessage: "my-notice", 
+	stackTrace: "my-stack", 
+	stackFrameDelimiter: "<frame>")
+```
+
+Parameters of `setErrorNotice()`:
+
+- exceptionType: type of exception that occurred
+- errorMessage: error message
+- stackTrace: stacktrace when error occurred
+- stackFrameDelimiter:  delimiter to split stack trace into frames
+
+#### Segments
+
+Segments in a transaction can be either Generic, DataStore or External, see demo below:
+
+``` swift
+// assume that t is a transaction
+let root = try t.segBeginGeneric(name: "my-segment")
+	// note: using default SQL Obfuscation method and default SQL trace rollup
+	let sub = try t.segBeginDataStore(parentSegmentId: root, table: "my-table", operation: .INSERT, sql: "INSERT INTO table(field) value('000-000-0000')")
+		let s2 = try t.segBeginExternal(parentSegmentId: sub, host: "perfect.org", name: "my-seg")
+		try t.segEnd(s2)
+	try t.segEnd(sub)
+try t.segEnd(root)
+```
+
+
+Parameters:
+
+- parentSegmentId: id of parent segment, root segment by default, i.e., ` NewRelic.ROOT_SEGMENT`.
+- name: name to represent segment
 
 ## Issues
 
