@@ -108,7 +108,7 @@ try nr.register(license: "my-lic", appName: "my-app", language: "Swift", version
 language and version can be skipped if you are using Swift 3.1:
 
 ``` swift
-try nr.register(license: "my-lic", appName: "my-app"
+try nr.register(license: "my-lic", appName: "my-app")
 ```
 
 - Optional: Shut down the connection to New Relic:
@@ -124,12 +124,45 @@ According to [New Relic Limiting or disabling Agent SDK Settings](https://docs.n
 If you want to ... | Use this setting ...
 -------------------|---------------------
 Disable data collection during a transaction|`nr.enableInstrumentation(false)`
- | **Note**: If you are running a web server that spawns off new processes per transaction, you may need to call this for every transaction.
+=>| **Note**: If you are running a web server that spawns off new processes per transaction, you may need to call this for every transaction.
 Shut down the agent in embedded-mode|`try nr.shutdown(reason: "some reasons")`
 Shut down the agent in daemon mode | Stop the `newrelic-collector-client-daemon` process.
 Configure the number of trace segments collected in a transaction trace|`let t = try Transaction(nr, maxTraceSegments: 50)` // // Only collect up to 50 trace segments
- | **Note**: If you are running a web server that spawns off new processes per transaction, you may need to call this for every transaction.
+=>| **Note**: If you are running a web server that spawns off new processes per transaction, you may need to call this for every transaction.
+
+## Using the Agent SDK - Perfect NewRelic
+
+Base on [New Relic's Document of Using the Agent SDK](https://docs.newrelic.com/docs/agents/agent-sdk/using-agent-sdk/using-agent-sdk), Perfect NewRelic library provides identically the same functions of New Relic Agent SDK in Swift:
+
+### Recording and viewing custom metrics
+
+Custom metrics give you a way to record arbitrary metrics about your application. You can also instrument your code, which will report performance metrics automatically whenever that code is executed. With a custom metric, you provide the value to be recorded for a specified metric name; for example:
+
+``` swift
+try nr.recordMetric(name: "ActiveUsers", value: 25)
+```
  
+### Obfuscating
+
+Perfect NewRelic framework provides the `obfuscate()` function as demo below:
+
+``` swift 
+let sql = nr.obfuscate(raw: "SELECT * FROM table WHERE ssn=‘000-00-0000’")
+// the sql value now will be:
+// SELECT * FROM table WHERE ssn=‘?-?-?’
+```
+
+## API Reference
+
+### Constructor
+
+Description| NewRelic Class Constructor
+----|------
+Demo|`let nr = try NewRelic(mode: .EMBEDDED)`
+Parameters|- libraryPath: default is `/usr/local/lib`, customize if need <br> - mode: UsageMode, `.DAEMON` (by default) or `.EMBEDDED.` 
+Returns| Instance of NewRelic Class
+
+
 ## Issues
 
 We are transitioning to using JIRA for all bugs and support related issues, therefore the GitHub issues has been disabled.

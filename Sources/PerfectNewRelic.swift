@@ -17,7 +17,11 @@
 //===----------------------------------------------------------------------===//
 //
 
+#if os(Linux)
 import SwiftGlibc
+#else
+import Darwin
+#endif
 
 /// NewRelic Swift Agent SDK
 public class NewRelic {
@@ -132,6 +136,7 @@ public class NewRelic {
   /// Constructor
   /// - parameters:
   ///   - libraryPath: default is /usr/local/lib, customize if need
+  ///   - mode: UsageMode, .DAEMON (default) or .EMBEDDED. 
   public init(_ libraryPath: String = "/usr/local/lib", mode: UsageMode = .DAEMON) throws {
     guard
     let lib1 = dlopen("\(libraryPath)/\(libClientDLL)", RTLD_LAZY),
