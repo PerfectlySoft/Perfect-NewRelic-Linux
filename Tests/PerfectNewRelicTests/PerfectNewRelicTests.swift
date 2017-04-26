@@ -38,6 +38,7 @@ class PerfectNewRelicTests: XCTestCase {
             default: print("shutdown")
             }
          }
+
          nr.enableInstrumentation(false)
          try nr.recordMetric(name: "my-var", value: 0.1)
          try nr.recordCPU(timeSeconds: 5.0, usagePercent: 1.2)
@@ -57,16 +58,15 @@ class PerfectNewRelicTests: XCTestCase {
          try nr.shutdown(reason: "no reason")
        }catch (let err) {
          switch err {
-         case NewRelic.Exception.FUN(let code):
-          XCTAssertEqual(code, NewRelic.RCODE.DISABLED)
+         case NewRelic.Exception.DISABLED: ()
          default:
-              XCTFail("\(err)")
+           print(err)
+           XCTFail("\(err)")
          }
        }
     }
 
-
     static var allTests = [
-        ("testDisabled", testDisabled),
+        ("testDisabled", testDisabled)
     ]
 }

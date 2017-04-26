@@ -63,10 +63,11 @@ Configure Package.swift:
 .Package(url: "https://github.com/PerfectlySoft/Perfect-NewRelic-linux.git", majorVersion: 1)
 ```
 
-Import library into your code:
+Import library into your code ( ⚠️**NOTE**⚠️ Since Swift 3.1 on linux has a significant linker issue, so module `PerfectNewRelic` must be accompanied with `Foundation`):
 
 ``` swift
 import PerfectNewRelic
+import Foundation
 ```
 
 Aside of Swift - C conversion, document can be found on [New Relic Agent SDK](https://docs.newrelic.com/docs/agents/agent-sdk/using-agent-sdk/using-agent-sdk)
