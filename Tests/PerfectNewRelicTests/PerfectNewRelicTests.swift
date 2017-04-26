@@ -22,19 +22,25 @@ import SwiftGlibc
 @testable import PerfectNewRelic
 
 class PerfectNewRelicTests: XCTestCase {
-    func testExample() {
+    func testDisabled() {
        do {
-         let nr = try NewRelic()
+         let nr = try NewRelic(mode: .EMBEDDED)
          try nr.register(license: "my-lic", appName: "my-app")
          nr.registerStatus { code in
-           print(code)
+            guard let status = NewRelic.Status(rawValue: code) else {
+         		   XCTFail("Bad Status: \(code)")
+               return
+         	  }//end guard
+         	  switch status {
+            case .STARTING: print("starting")
+            case .STARTED: print("started")
+            case .STOPPING: print("stopping")
+            default: print("shutdown")
+            }
          }
          let s = nr.obfuscate(raw: "SELECT * FROM table WHERE ssn=‘000-00-0000’")
          print(s)
          nr.enableInstrumentation(false)
-         nr.registerMessageHandler { param -> UnsafeRawPointer in
-           return param
-         }
          try nr.recordMetric(name: "my-var", value: 0.1)
          try nr.recordCPU(timeSeconds: 5.0, usagePercent: 1.2)
          try nr.recordMemory(megabytes: 32)
@@ -67,6 +73,6 @@ class PerfectNewRelicTests: XCTestCase {
 
 
     static var allTests = [
-        ("testExample", testExample),
+        ("testDisabled", testDisabled),
     ]
 }

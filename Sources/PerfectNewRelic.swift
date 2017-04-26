@@ -33,6 +33,10 @@ public class NewRelic {
     NOT_STARTED = -0x40001, IN_PROGRESS = -0x40002, NOT_NAMED = -0x40003
   }//end enum
 
+  public enum UsageMode {
+  case DAEMON, EMBEDDED
+  }//end usage mode
+
   /// Errors
   public enum Exception: Error {
   case
@@ -44,12 +48,12 @@ public class NewRelic {
     FUN(code: RCODE)
   }//end enum
 
-  public let AUTOSCOPE = 1
-  public let ROOT_SEGMENT = 0
-  public let SELECT = "select"
-  public let INSERT = "insert"
-  public let UPDATE = "update"
-  public let DELETE = "delete"
+  public static let AUTOSCOPE = 1
+  public static let ROOT_SEGMENT = 0
+  public static let SELECT = "select"
+  public static let INSERT = "insert"
+  public static let UPDATE = "update"
+  public static let DELETE = "delete"
 
   internal let libClientDLL = "libnewrelic-collector-client.so"
   internal let libCommonDLL = "libnewrelic-common.so"
@@ -128,7 +132,7 @@ public class NewRelic {
   /// Constructor
   /// - parameters:
   ///   - libraryPath: default is /usr/local/lib, customize if need
-  public init(_ libraryPath: String = "/usr/local/lib") throws {
+  public init(_ libraryPath: String = "/usr/local/lib", mode: UsageMode = .DAEMON) throws {
     guard
     let lib1 = dlopen("\(libraryPath)/\(libClientDLL)", RTLD_LAZY),
     let lib2 = dlopen("\(libraryPath)/\(libCommonDLL)", RTLD_LAZY),
@@ -194,6 +198,10 @@ public class NewRelic {
     newrelic_segment_datastore_begin = unsafeBitCast(fl2s4cl, to: funcL2S4CL.self)
     newrelic_segment_external_begin = unsafeBitCast(fl2s2l, to: funcL2S2L.self)
     newrelic_segment_end = unsafeBitCast(fll2l2, to: funcLL2L.self)
+
+    if mode == .EMBEDDED {
+      newrelic_register_message_handler(newrelic_message_handler)
+    }//end if
   }
 
   /// Record the current amount of memory being used.
@@ -226,29 +234,6 @@ public class NewRelic {
   public func recordMetric(name: String, value: Double) throws {
     let r = newrelic_record_metric(name, value)
     guard r == 0 else { throw asError(r) }
-  }//end func
-
-  /// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-  /// * Embedded-mode only
-  /// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-  ///
-  /// Register a function to handle messages carrying application performance data
-  /// between the instrumented app and CollectorClient. By default, a daemon-mode
-  /// message handler is registered.
-  ///
-  /// If you register the embedded-mode message handler, registerMessageHandler
-  /// messages will be passed directly to the CollectorClient.
-  /// Otherwise, the daemon-mode message handler will send
-  /// messages to the CollectorClient via domain sockets.
-  ///
-  /// * Note: Register registerMessageHandler before calling register().
-  ///
-  /// - parameters:
-  ///   - handler:  message handler for embedded-mode
-  /// - throws:
-  ///   Exception
-  public func registerMessageHandler(handler: @escaping (UnsafeRawPointer)->UnsafeRawPointer) {
-    newrelic_register_message_handler(handler)
   }//end func
 
   /// Disable/enable instrumentation. By default, instrumentation is enabled.
@@ -287,28 +272,6 @@ public class NewRelic {
   ///   obfuscated sql string
   public func obfuscate(raw: String) -> String {
     return String(validatingUTF8: newrelic_basic_literal_replacement_obfuscator(raw)) ?? ""
-  }//end func
-
-  /// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-  /// * Embedded-mode only
-  /// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-  /// *
-  /// * Register a function to handle messages carrying application performance data
-  /// * between the instrumented app and CollectorClient. By default, a daemon-mode
-  /// * message handler is registered.
-  /// *
-  /// * If you register the embedded-mode message handler, newrelic_message_handler
-  /// * (declared in newrelic_collector_client.h), messages will be passed directly
-  /// * to the CollectorClient. Otherwise, the daemon-mode message handler will send
-  /// * messages to the CollectorClient via domain sockets.
-  /// *
-  /// * Note: Register registerMessageHandler before calling register().
-  /// - parameters:
-  ///   - handler: message handler for embedded-mode
-  /// - throws:
-  ///   Exception
-  public func registerMessageHandler(raw: UnsafeRawPointer) -> UnsafeRawPointer {
-    return newrelic_message_handler(raw)
   }//end func
 
   /// Register a function to be called whenever the status of the CollectorClient changes.
@@ -429,11 +392,11 @@ public class Transaction {
   /// type of segment does not create metrics, but can show up in a transaction
   /// trace if a transaction is slow enough.
   /// - parameters:
-  ///   - parentSegmentId: id of parent segment
+  ///   - parentSegmentId: id of parent segment, root segment by default.
   ///   - name: name to represent segment
   /// - throws:
   ///   Exception
-  public func segBeginGeneric(parentSegmentId: Int, name: String) throws -> Int {
+  public func segBeginGeneric(parentSegmentId: Int = NewRelic.ROOT_SEGMENT, name: String) throws -> Int {
     let r = parent.newrelic_segment_generic_begin(id, Int32(parentSegmentId), name)
     guard r > 0 else { throw parent.asError(r) }
     return Int(r)
@@ -474,7 +437,7 @@ public class Transaction {
   /// doing, such as "get_user_account" or (2) pass it NULL, in which case
   /// it will use the sql obfuscator to generate a name.
   /// - parameters:
-  ///   - parentSegmentId: id of parent segment
+  ///   - parentSegmentId: id of parent segment, root segment by default.
   ///   - table: name of the database table
   ///   - operation: name of the sql operation
   ///   - sql: the sql string
@@ -482,7 +445,7 @@ public class Transaction {
   ///   - sqlObfuscator:  a function pointer that takes sql and obfuscates it
   /// - throws:
   ///   Exception
-  public func segBeginDataStore(parentSegmentId: Int, table: String, operation: String, sql: String, sqlTraceRollupName: String, sqlObfuscator: @escaping StringCallBack ) throws -> Int {
+  public func segBeginDataStore(parentSegmentId: Int = NewRelic.ROOT_SEGMENT, table: String, operation: String, sql: String, sqlTraceRollupName: String, sqlObfuscator: @escaping StringCallBack ) throws -> Int {
     Transaction.SQLObfuscator = sqlObfuscator
     let r = parent.newrelic_segment_datastore_begin(id, Int32(parentSegmentId), table, operation, sql, sqlTraceRollupName, {
       pstring in
@@ -495,12 +458,12 @@ public class Transaction {
 
   /// Identify the beginning of a segment that performs an external service.
   /// - parameters:
-  ///   - parentSegmentId: id of parent segment
+  ///   - parentSegmentId: id of parent segment, root segment by default.
   ///   - host: name of the host of the external call
   ///   - name:  name of the external transaction
   /// - throws:
   ///   Exception
-  public func segBeginExternal(parentSegmentId: Int, host: String, name: String) throws -> Int {
+  public func segBeginExternal(parentSegmentId: Int = NewRelic.ROOT_SEGMENT, host: String, name: String) throws -> Int {
     let r = parent.newrelic_segment_external_begin(id, Int32(parentSegmentId), host, name)
     guard r > 0 else { throw parent.asError(r) }
     return Int(r)
