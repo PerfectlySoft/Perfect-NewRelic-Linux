@@ -57,6 +57,8 @@ $ cd Perfect-libNewRelic-linux
 $ sudo ./install.sh
 ```
 
+During the installation, it will ask for license key, application name, language and its version. Then it will install the command line `newrelic-collector-client-daemon` as a service which you can find the configuration on `/usr/local/etc/newrelic.service`
+
 Configure Package.swift:
 
 ``` swift
@@ -74,14 +76,12 @@ Aside of Swift - C conversion, document can be found on [New Relic Agent SDK](ht
 
 ## Configuration
 
-Post Installation & Configuration can be found on [New Relic - Configuring the Agent SDK](https://docs.newrelic.com/docs/agents/agent-sdk/installation-configuration/configuring-agent-sdk), equivalent Swift codes listed below:
+Post Installation & Configuration can be found on [New Relic - Configuring the Agent SDK](https://docs.newrelic.com/docs/agents/agent-sdk/installation-configuration/configuring-agent-sdk), please note that NewRelic instance is configured as **Daemon Mode** which is highly recommended because the *Embedded-mode* is still experimental.
 
-### Running in Embedded-mode
-
-- To setup NewRelic instance in embedded-mode properly, program must explicitly declare the usage mode as `.EMBEDDED`, which means to send data to New Relic when transactions are completed, equivalent to `newrelic_register_message_handler(newrelic_message_handler);` defined in the original documentation:
+If success, you can create NewRelic instance easily:
 
 ``` swift
-let nr = try NewRelic(mode: .EMBEDDED)
+let nr = try NewRelic()
 ```
 
 - Create a function to receive status change notifications:
@@ -99,25 +99,6 @@ nr.registerStatus { code in
    }//end case
 }//end callback
 ```
-
-- Once created the NewRelic instance, please register the license key and application name like this:
-
-``` swift
-try nr.register(license: "my-lic", appName: "my-app", language: "Swift", version: "3.1")
-```
-
-language and version can be skipped if you are using Swift 3.1:
-
-``` swift
-try nr.register(license: "my-lic", appName: "my-app")
-```
-
-- Optional: Shut down the connection to New Relic:
-
-``` swift 
-try nr.shutdown(reason: "no reason")
-```
-
 ## Limiting or disabling Agent SDK settings
 
 According to [New Relic Limiting or disabling Agent SDK Settings](https://docs.newrelic.com/docs/agents/agent-sdk/installation-configuration/limiting-or-disabling-agent-sdk-settings), the following settings are available in Perfect NewRelic:
@@ -126,8 +107,6 @@ If you want to ... | Use this setting ...
 -------------------|---------------------
 Disable data collection during a transaction|`nr.enableInstrumentation(false)`
 =>| **Note**: If you are running a web server that spawns off new processes per transaction, you may need to call this for every transaction.
-Shut down the agent in embedded-mode|`try nr.shutdown(reason: "some reasons")`
-Shut down the agent in daemon mode | Stop the `newrelic-collector-client-daemon` process.
 Configure the number of trace segments collected in a transaction trace|`let t = try Transaction(nr, maxTraceSegments: 50)` // // Only collect up to 50 trace segments
 =>| **Note**: If you are running a web server that spawns off new processes per transaction, you may need to call this for every transaction.
 
@@ -142,33 +121,10 @@ Custom metrics give you a way to record arbitrary metrics about your application
 ``` swift
 try nr.recordMetric(name: "ActiveUsers", value: 25)
 ```
- 
+
 ## API Quick Help
 
-### NewRelic Class Methods
-
-Function| `init()`
-----|------
-Demo|`let nr = try NewRelic(mode: .EMBEDDED)`
-Description| NewRelic Class Constructor
-Parameters|- libraryPath: default is `/usr/local/lib`, customize if need <br> - mode: UsageMode, `.DAEMON` (by default) or `.EMBEDDED.` 
-Returns| Instance of NewRelic Class
-
-Function |`register()`
-----|------
-Demo|`try nr.register(license: "my-lic", appName: "my-app")`
-Description| Start the CollectorClient and the harvester thread that sends application performance data to New Relic once a minute.
-Parameters|- license:  New Relic account license key <br> - appName:  name of instrumented application <br> - language:  name of application programming language, default is "Swift" <br> - version:  application programming language version, "3.1" by default
-
-Function |`registerStatus()`
----|---
-Demo|See [Running in Embedded-mode](### Running in Embedded-mode)
-Description|Register a function to be called whenever the status of the CollectorClient changes.
-Parameters|  - callback: status callback function to register
-
-Function | `enableInstrumentation()`
----|---
-Description| See [Limiting or disabling Agent SDK settings](## Limiting or disabling Agent SDK settings)
+### Instruments & Profiling
 
 Function | `recordMetric()`
 ---|---
@@ -187,12 +143,6 @@ Function | `recordMemory()`
 Demo|`try nr.recordMemory(megabytes: 32)`
 Description|Record the current amount of memory being used.
 Parameters| - megabytes: Double, amount of memory currently being used
-
-Function | `shutdown()`
----|---
-Demo|try nr.shutdown(reason: "no reason")
-Description| Tell the CollectorClient to shutdown and stop reporting application performance data to New Relic.
-Parameters|- reason: String, reasons for shutdown request
 
 ### Transaction
 
@@ -236,9 +186,9 @@ Perfect NewRelic provides `setErrorNotice()` function for transactions:
 
 ``` swift
 try t.setErrorNotice(
-	exceptionType: "my-panic-type-1", 
-	errorMessage: "my-notice", 
-	stackTrace: "my-stack", 
+	exceptionType: "my-panic-type-1",
+	errorMessage: "my-notice",
+	stackTrace: "my-stack",
 	stackFrameDelimiter: "<frame>")
 ```
 
@@ -257,16 +207,15 @@ Segments in a transaction can be either Generic, DataStore or External, see demo
 // assume that t is a transaction
 let root = try t.segBeginGeneric(name: "my-segment")
 	// note: using default SQL Obfuscation method and default SQL trace rollup
-	let sub = try t.segBeginDataStore(parentSegmentId: root, 
-	table: "my-table", operation: .INSERT, 
+	let sub = try t.segBeginDataStore(parentSegmentId: root,
+	table: "my-table", operation: .INSERT,
 	sql: "INSERT INTO table(field) value('000-000-0000')")
-		let s2 = try t.segBeginExternal(parentSegmentId: sub, 
+		let s2 = try t.segBeginExternal(parentSegmentId: sub,
 		host: "perfect.org", name: "my-seg")
 		try t.segEnd(s2)
 	try t.segEnd(sub)
 try t.segEnd(root)
 ```
-
 
 Parameters:
 

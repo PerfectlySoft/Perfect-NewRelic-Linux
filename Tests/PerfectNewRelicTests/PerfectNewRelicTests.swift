@@ -22,10 +22,11 @@ import SwiftGlibc
 @testable import PerfectNewRelic
 
 class PerfectNewRelicTests: XCTestCase {
-    func testDisabled() {
+  // NOTE: use install.sh to install the newrelic-collector-client-daemon service
+  // this script depends on this service.
+    func testExample() {
        do {
-         let nr = try NewRelic(mode: .EMBEDDED)
-         try nr.register(license: "my-lic", appName: "my-app")
+         let nr = try NewRelic()
          nr.registerStatus { code in
             guard let status = NewRelic.Status(rawValue: code) else {
          		   XCTFail("Bad Status: \(code)")
@@ -39,10 +40,14 @@ class PerfectNewRelicTests: XCTestCase {
             }
          }
 
-         nr.enableInstrumentation(false)
-         try nr.recordMetric(name: "my-var", value: 0.1)
-         try nr.recordCPU(timeSeconds: 5.0, usagePercent: 1.2)
-         try nr.recordMemory(megabytes: 32)
+         nr.enableInstrumentation(true)
+         for i in 1 ... 10 {
+           let j = Double(i)
+           try nr.recordMetric(name: "ActiveUsers", value: 0.1 * j)
+           try nr.recordCPU(timeSeconds: 5.0 * j , usagePercent: 1.2 * j)
+           try nr.recordMemory(megabytes: 32 * j)
+           sleep(1)
+         }//next
          let t = try Transaction(nr, webType: false,
             category: "my-class-1", name: "my-transaction-name",
             url: "http://localhost",
@@ -55,18 +60,12 @@ class PerfectNewRelicTests: XCTestCase {
          try t.segEnd(s2)
          try t.segEnd(sub)
          try t.segEnd(root)
-         try nr.shutdown(reason: "no reason")
        }catch (let err) {
-         switch err {
-         case NewRelic.Exception.DISABLED: ()
-         default:
-           print(err)
-           XCTFail("\(err)")
-         }
+          XCTFail("\(err)")
        }
     }
 
     static var allTests = [
-        ("testDisabled", testDisabled)
+        ("testExample", testExample)
     ]
 }
