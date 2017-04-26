@@ -231,19 +231,20 @@ public class NewRelic {
   /// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
   /// * Embedded-mode only
   /// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-  /// *
-  /// * Register a function to handle messages carrying application performance data
-  /// * between the instrumented app and CollectorClient. By default, a daemon-mode
-  /// * message handler is registered.
-  /// *
-  /// * If you register the embedded-mode message handler, newrelic_message_handler
-  /// * (declared in newrelic_collector_client.h), messages will be passed directly
-  /// * to the CollectorClient. Otherwise, the daemon-mode message handler will send
-  /// * messages to the CollectorClient via domain sockets.
-  /// *
-  /// * Note: Register newrelic_message_handler before calling newrelic_init.
+  ///
+  /// Register a function to handle messages carrying application performance data
+  /// between the instrumented app and CollectorClient. By default, a daemon-mode
+  /// message handler is registered.
+  ///
+  /// If you register the embedded-mode message handler, registerMessageHandler
+  /// messages will be passed directly to the CollectorClient.
+  /// Otherwise, the daemon-mode message handler will send
+  /// messages to the CollectorClient via domain sockets.
+  ///
+  /// * Note: Register registerMessageHandler before calling register().
+  ///
   /// - parameters:
-  ///   - handler: message handler for embedded-mode
+  ///   - handler:  message handler for embedded-mode
   /// - throws:
   ///   Exception
   public func registerMessageHandler(handler: @escaping (UnsafeRawPointer)->UnsafeRawPointer) {
@@ -261,28 +262,71 @@ public class NewRelic {
     newrelic_enable_instrumentation(enabled ? 1 :  0)
   }//end func
 
+  /// A basic literal replacement obfuscator that strips the SQL string literals
+  /// (values between single or double quotes) and numeric sequences, replacing
+  /// them with the ? character.
+  ///
+  /// For example:
+  ///
+  /// This SQL:
+  /// 	SELECT * FROM table WHERE ssn=‘000-00-0000’
+  ///
+  /// obfuscates to:
+  /// 		SELECT * FROM table WHERE ssn=?
+  ///
+  /// Because our default obfuscator just replaces literals, there could be
+  /// cases that it does not handle well. For instance, it will not strip out
+  /// comments from your SQL string, it will not handle certain database-specific
+  /// language features, and it could fail for other complex cases.
+  ///
   /// - parameters:
+  ///   - raw: a raw sql string
   /// - throws:
   ///   Exception
-  public func obfuscator(raw: String) -> String? {
-    return String(validatingUTF8: newrelic_basic_literal_replacement_obfuscator(raw))
+  /// - returns:
+  ///   obfuscated sql string
+  public func obfuscate(raw: String) -> String {
+    return String(validatingUTF8: newrelic_basic_literal_replacement_obfuscator(raw)) ?? ""
   }//end func
 
+  /// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  /// * Embedded-mode only
+  /// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+  /// *
+  /// * Register a function to handle messages carrying application performance data
+  /// * between the instrumented app and CollectorClient. By default, a daemon-mode
+  /// * message handler is registered.
+  /// *
+  /// * If you register the embedded-mode message handler, newrelic_message_handler
+  /// * (declared in newrelic_collector_client.h), messages will be passed directly
+  /// * to the CollectorClient. Otherwise, the daemon-mode message handler will send
+  /// * messages to the CollectorClient via domain sockets.
+  /// *
+  /// * Note: Register registerMessageHandler before calling register().
   /// - parameters:
+  ///   - handler: message handler for embedded-mode
   /// - throws:
   ///   Exception
-  public func messageHandler(raw: UnsafeRawPointer) -> UnsafeRawPointer {
+  public func registerMessageHandler(raw: UnsafeRawPointer) -> UnsafeRawPointer {
     return newrelic_message_handler(raw)
   }//end func
 
+  /// Register a function to be called whenever the status of the CollectorClient changes.
   /// - parameters:
+  ///   - handler: status callback function to register
   /// - throws:
   ///   Exception
-  public func setStatus(callback: @escaping (Int32) -> Void ) {
+  public func registerStatus(callback: @escaping (Int32) -> Void ) {
     newrelic_register_status_callback(callback)
   }//end func
 
+  /// Start the CollectorClient and the harvester thread that sends application
+  /// performance data to New Relic once a minute.
   /// - parameters:
+  ///   - license:  New Relic account license key
+  ///   - appName:  name of instrumented application
+  ///   - language:  name of application programming language
+  ///   - version:  application programming language version
   /// - throws:
   ///   Exception
   public func register(license: String, appName: String, language: String = "Swift", version: String = "3.1") throws {
@@ -290,7 +334,10 @@ public class NewRelic {
     guard r == 0 else { throw asError(r) }
   }//end func
 
+  /// Tell the CollectorClient to shutdown and stop reporting application
+  /// performance data to New Relic.
   /// - parameters:
+  ///   - reason: for shutdown request
   /// - throws:
   ///   Exception
   public func shutdown(reason: String) throws {
@@ -313,34 +360,64 @@ public class Transaction {
   public typealias StringCallBack = (String) -> String
   public static var SQLObfuscator: StringCallBack = { $0 }
 
+  /// Identify the beginning of a transaction.
   /// - parameters:
+  ///   - instance: NewRelic instance
+  ///   - webType: true for WebTransaction and false for other. default is true.
+  ///   - category: name of the transaction category, default is 'Uri'
+  ///   - name: transaction name
+  ///   - url: request url for a web transaction
+  ///   - attributes: transaction attributes, pair of "name: value"
+  ///   - maxTraceSegments: Set the maximum number of trace segments allowed in a transaction trace. By default, the maximum is set to 2000, which means the first 2000 segments in a transaction will create trace segments if the transaction exceeds the trace threshold (4 x apdex_t).
   /// - throws:
   ///   Exception
-  public init(_ instance: NewRelic) throws {
+  public init(_ instance: NewRelic,
+    webType: Bool? = nil,
+    category: String? = nil,
+    name: String? = nil,
+    url: String? = nil,
+    attributes: [String: String],
+    maxTraceSegments: Int? = nil
+  ) throws {
     parent = instance
     id = parent.newrelic_transaction_begin()
     guard id > 0 else { throw parent.asError(id) }
-  }
+    var r:Int32 = 0
+    if let web = webType {
+      r = web ?
+        parent.newrelic_transaction_set_type_web( id ) :
+        parent.newrelic_transaction_set_type_other ( id )
+        guard r == 0 else { throw parent.asError(r) }
+    }//end if
+    if let cat = category {
+      r = parent.newrelic_transaction_set_category(id, cat)
+      guard r == 0 else { throw parent.asError(r) }
+    }//end if
+    if let nm = name {
+      r = parent.newrelic_transaction_set_name(id, nm)
+      guard r == 0 else { throw parent.asError(r) }
+    }
+    if let uri = url {
+      let r = parent.newrelic_transaction_set_request_url(id, uri)
+      guard r == 0 else { throw parent.asError(r) }
+    }
+    for (key, value) in attributes {
+      let r = parent.newrelic_transaction_add_attribute(id, key, value)
+      guard r == 0 else { throw parent.asError(r) }
+    }//next
+    if let max = maxTraceSegments {
+      r = parent.newrelic_transaction_set_max_trace_segments(id, Int32(max))
+      guard r == 0 else { throw parent.asError(r) }
+    }//end if
+  }//end init
 
+  /// Identify an error that occurred during the transaction. The first identified
+  /// error is sent with each transaction.
   /// - parameters:
-  /// - throws:
-  ///   Exception
-  public func setType(web: Bool) throws {
-    let r = web ?
-      parent.newrelic_transaction_set_type_web( id ) :
-      parent.newrelic_transaction_set_type_other ( id )
-    guard r == 0 else { throw parent.asError(r) }
-  }
-
-  /// - parameters:
-  /// - throws:
-  ///   Exception
-  public func setCategory(_ category: String) throws {
-    let r = parent.newrelic_transaction_set_category(id, category)
-    guard r == 0 else { throw parent.asError(r) }
-  }
-
-  /// - parameters:
+  ///   - exceptionType: type of exception that occurred
+  ///   - errorMessage: error message
+  ///   - stackTrace: stacktrace when error occurred
+  ///   - stackFrameDelimiter  delimiter to split stack trace into frames
   /// - throws:
   ///   Exception
   public func setErrorNotice(exceptionType: String, errorMessage: String, stackTrace: String, stackFrameDelimiter: String) throws {
@@ -348,40 +425,12 @@ public class Transaction {
     guard r == 0 else { throw parent.asError(r) }
   }
 
+  /// Identify the beginning of a segment that performs a generic operation. This
+  /// type of segment does not create metrics, but can show up in a transaction
+  /// trace if a transaction is slow enough.
   /// - parameters:
-  /// - throws:
-  ///   Exception
-  public func setName(_ name: String) throws {
-    let r = parent.newrelic_transaction_set_name(id, name)
-    guard r == 0 else { throw parent.asError(r) }
-  }
-
-  /// - parameters:
-  /// - throws:
-  ///   Exception
-  public func setRequest(url: String) throws {
-    let r = parent.newrelic_transaction_set_request_url(id, url)
-    guard r == 0 else { throw parent.asError(r) }
-  }
-  /// - parameters:
-  /// - throws:
-  ///   Exception
-  public func add(attributes: [String: String]) throws {
-    for (name, value) in attributes {
-      let r = parent.newrelic_transaction_add_attribute(id, name, value)
-      guard r == 0 else { throw parent.asError(r) }
-    }//next
-  }
-
-  /// - parameters:
-  /// - throws:
-  ///   Exception
-  public func setMaxTraceSegements(_ maxTraceSegments: Int = 2000) throws {
-    let r = parent.newrelic_transaction_set_max_trace_segments(id, Int32(maxTraceSegments))
-    guard r == 0 else { throw parent.asError(r) }
-  }
-
-  /// - parameters:
+  ///   - parentSegmentId: id of parent segment
+  ///   - name: name to represent segment
   /// - throws:
   ///   Exception
   public func segBeginGeneric(parentSegmentId: Int, name: String) throws -> Int {
@@ -390,7 +439,47 @@ public class Transaction {
     return Int(r)
   }
 
+  ///
+  /// Identify the beginning of a segment that performs a database operation.
+  ///
+  ///
+  /// SQL Obfuscation
+  /// ===============
+  /// If you supply the sql_obfuscator parameter with NULL, the supplied SQL string
+  /// will go through our basic literal replacement obfuscator that strips the SQL
+  /// string literals (values between single or double quotes) and numeric
+  /// sequences, replacing them with the ? character. For example:
+  ///
+  /// This SQL:
+  ///		SELECT * FROM table WHERE ssn=‘000-00-0000’
+  ///
+  /// obfuscates to:
+  ///		SELECT * FROM table WHERE ssn=?
+  ///
+  /// Because our default obfuscator just replaces literals, there could be
+  /// cases that it does not handle well. For instance, it will not strip out
+  /// comments from your SQL string, it will not handle certain database-specific
+  /// language features, and it could fail for other complex cases.
+  ///
+  /// If this level of obfuscation is not sufficient, you can supply your own
+  /// custom obfuscator via the sql_obfuscator parameter.
+  ///
+  /// SQL Trace Rollup
+  /// ================
+  /// The agent aggregates similar SQL statements together using the supplied
+  /// sqlTraceRollupName.
+  ///
+  /// To make the most out of this feature, you should either (1) supply the
+  /// sqlTraceRollupName parameter with a name that describes what the SQL is
+  /// doing, such as "get_user_account" or (2) pass it NULL, in which case
+  /// it will use the sql obfuscator to generate a name.
   /// - parameters:
+  ///   - parentSegmentId: id of parent segment
+  ///   - table: name of the database table
+  ///   - operation: name of the sql operation
+  ///   - sql: the sql string
+  ///   - sqlTraceRollupName: the rollup name for the sql trace
+  ///   - sqlObfuscator:  a function pointer that takes sql and obfuscates it
   /// - throws:
   ///   Exception
   public func segBeginDataStore(parentSegmentId: Int, table: String, operation: String, sql: String, sqlTraceRollupName: String, sqlObfuscator: @escaping StringCallBack ) throws -> Int {
@@ -404,7 +493,11 @@ public class Transaction {
     return Int(r)
   }
 
+  /// Identify the beginning of a segment that performs an external service.
   /// - parameters:
+  ///   - parentSegmentId: id of parent segment
+  ///   - host: name of the host of the external call
+  ///   - name:  name of the external transaction
   /// - throws:
   ///   Exception
   public func segBeginExternal(parentSegmentId: Int, host: String, name: String) throws -> Int {
@@ -413,7 +506,9 @@ public class Transaction {
     return Int(r)
   }
 
+  /// Identify the end of a segment
   /// - parameters:
+  ///   - segId: id of the segment to end
   /// - throws:
   ///   Exception
   public func segEnd(_ segId: Int) throws {

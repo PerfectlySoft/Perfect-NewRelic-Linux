@@ -26,10 +26,10 @@ class PerfectNewRelicTests: XCTestCase {
        do {
          let nr = try NewRelic()
          try nr.register(license: "my-lic", appName: "my-app")
-         nr.setStatus { code in
+         nr.registerStatus { code in
            print(code)
          }
-         let s = nr.obfuscator(raw: "SELECT * FROM table WHERE ssn=‘000-00-0000’") ?? ""
+         let s = nr.obfuscate(raw: "SELECT * FROM table WHERE ssn=‘000-00-0000’")
          print(s)
          nr.enableInstrumentation(false)
          nr.registerMessageHandler { param -> UnsafeRawPointer in
@@ -38,14 +38,12 @@ class PerfectNewRelicTests: XCTestCase {
          try nr.recordMetric(name: "my-var", value: 0.1)
          try nr.recordCPU(timeSeconds: 5.0, usagePercent: 1.2)
          try nr.recordMemory(megabytes: 32)
-         let t = try Transaction(nr)
-         try t.setType(web: true)
-         try t.setType(web: false)
-         try t.setCategory("my-class-1")
+         let t = try Transaction(nr, webType: false,
+            category: "my-class-1", name: "my-transaction-name",
+            url: "http://localhost",
+            attributes: ["tom": "jerry", "pros":"cons", "muddy":"puddels"],
+            maxTraceSegments: 2000)
          try t.setErrorNotice(exceptionType: "my-panic-type-1", errorMessage: "my-notice", stackTrace: "my-stack", stackFrameDelimiter: "<frame>")
-         try t.add(attributes: ["tom": "jerry", "pros":"cons", "muddy":"puddels"])
-         try t.setName("my-transaction-name")
-         try t.setMaxTraceSegements()
          let s0 = try t.segBeginGeneric(parentSegmentId: 100, name: "my-segment")
          try t.segEnd(s0)
          let s1 = try t.segBeginDataStore(parentSegmentId: 100, table: "my-table", operation: "my-op", sql: "SELECT * FROM table", sqlTraceRollupName: "my-rollback") {
