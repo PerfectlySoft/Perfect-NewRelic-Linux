@@ -1,4 +1,4 @@
-# Perfect New Relic Library for Linux
+# Perfect New Relic Library for Linux [简体中文](README.zh_CN.md)
 
 <p align="center">
     <a href="http://perfect.org/get-involved.html" target="_blank">
@@ -39,9 +39,9 @@
     </a>
 </p>
 
-This project provides a system level module for New Relic Agent SDK.
+This project provides a Swift Agent SDK for New Relic.
 
-This package builds with Swift Package Manager and is part of the [Perfect](https://github.com/PerfectlySoft/Perfect) project and should not be used as an independent module.
+This package builds with Swift Package Manager and is part of the [Perfect](https://github.com/PerfectlySoft/Perfect) project but can be used as an independent module.
 
 ## Release Note
 
@@ -49,7 +49,7 @@ This project is only compatible with Ubuntu 16.04 and Swift 3.1 Tool Chain.
 
 ## Quick Start
 
-Please use PA to import this project, otherwise an install script is available for Ubuntu 16.04:
+Please use [Perfect Assistant](http://www.perfect.org/en/assistant/) to import this project, otherwise an install script is available for Ubuntu 16.04:
 
 ```
 $ git clone https://github.com/PerfectlySoft/Perfect-NewRelic-linux.git
@@ -72,7 +72,7 @@ import PerfectNewRelic
 import Foundation
 ```
 
-Aside of Swift - C conversion, document can be found on [New Relic Agent SDK](https://docs.newrelic.com/docs/agents/agent-sdk/using-agent-sdk/using-agent-sdk)
+Aside of Swift - C syntax conversion differences, document can be found on [New Relic Agent SDK](https://docs.newrelic.com/docs/agents/agent-sdk/using-agent-sdk/using-agent-sdk)
 
 ## Configuration
 
@@ -92,9 +92,9 @@ nr.registerStatus { code in
 		// something wrong here
 	}//end guard
 	switch status {
-		case .STARTING: // it is starting
-		case .STARTED: // it is started
-		case .STOPPING: // it is stopping
+		case .STARTING: // New Relic Daemon Service is starting
+		case .STARTED: // New Relic Daemon Service is started
+		case .STOPPING: // New Relic Daemon Service is stopping
 		default: // shutdown already
    }//end case
 }//end callback
@@ -106,23 +106,11 @@ According to [New Relic Limiting or disabling Agent SDK Settings](https://docs.n
 If you want to ... | Use this setting ...
 -------------------|---------------------
 Disable data collection during a transaction|`nr.enableInstrumentation(false)`
-=>| **Note**: If you are running a web server that spawns off new processes per transaction, you may need to call this for every transaction.
 Configure the number of trace segments collected in a transaction trace|`let t = try Transaction(nr, maxTraceSegments: 50)` // // Only collect up to 50 trace segments
-=>| **Note**: If you are running a web server that spawns off new processes per transaction, you may need to call this for every transaction.
-
-## Using the Agent SDK - Perfect NewRelic
-
-Base on [New Relic's Document of Using the Agent SDK](https://docs.newrelic.com/docs/agents/agent-sdk/using-agent-sdk/using-agent-sdk), Perfect NewRelic library provides identically the same functions of New Relic Agent SDK in Swift:
-
-### Recording and viewing custom metrics
-
-Custom metrics give you a way to record arbitrary metrics about your application. You can also instrument your code, which will report performance metrics automatically whenever that code is executed. With a custom metric, you provide the value to be recorded for a specified metric name; for example:
-
-``` swift
-try nr.recordMetric(name: "ActiveUsers", value: 25)
-```
 
 ## API Quick Help
+
+Base on [New Relic's Document of Using the Agent SDK](https://docs.newrelic.com/docs/agents/agent-sdk/using-agent-sdk/using-agent-sdk), Perfect NewRelic library provides identically the same functions of New Relic Agent SDK in Swift:
 
 ### Instruments & Profiling
 
@@ -146,7 +134,7 @@ Parameters| - megabytes: Double, amount of memory currently being used
 
 ### Transaction
 
-Transaction in Perfect NewRelic has been defined as a class, with construction as below:
+Transaction in Perfect NewRelic has been defined as a class, with constructior as below:
 
 ``` swift
 public init(_ instance: NewRelic,
