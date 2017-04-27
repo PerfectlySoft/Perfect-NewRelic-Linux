@@ -195,15 +195,17 @@ try t.setErrorNotice(
 ``` swift
 // 假如 t 是一个Transaction 对象例程
 let root = try t.segBeginGeneric(name: "my-segment")
-	// 注意：下面调用方法采用自动 Obfuscation 混合方法并采用自动跟踪回滚：
-	let sub = try t.segBeginDataStore(parentSegmentId: root,
-	table: "my-table", operation: .INSERT,
-	sql: "INSERT INTO table(field) value('000-000-0000')")
-		let s2 = try t.segBeginExternal(parentSegmentId: sub,
-		host: "perfect.org", name: "my-seg")
-		try t.segEnd(s2)
-	try t.segEnd(sub)
+// 执行某些常规操作
 try t.segEnd(root)
+
+// 注意：下面调用方法采用自动 Obfuscation 混合方法并采用自动跟踪回滚：
+let sub = try t.segBeginDataStore(table: "my-table", operation: .INSERT, sql: "INSERT INTO table(field) value('000-000-0000')")
+// 执行某些数据操作
+try t.segEnd(sub)
+
+let s2 = try t.segBeginExternal(host: "perfect.org", name: "my-seg")
+// 执行某些外部调用
+try t.segEnd(s2)
 ```
 
 参数说明:

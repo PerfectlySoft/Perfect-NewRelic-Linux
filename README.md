@@ -184,7 +184,7 @@ Parameters of `setErrorNotice()`:
 
 - exceptionType: type of exception that occurred
 - errorMessage: error message
-- stackTrace: stacktrace when error occurred
+- stackTrace: print stack trace when error occurred
 - stackFrameDelimiter:  delimiter to split stack trace into frames
 
 #### Segments
@@ -192,17 +192,21 @@ Parameters of `setErrorNotice()`:
 Segments in a transaction can be either Generic, DataStore or External, see demo below:
 
 ``` swift
-// assume that t is a transaction
+// assume t is a transaction
+try t.setErrorNotice(exceptionType: "my-panic-type-1", errorMessage: "my-notice", stackTrace: "my-stack", stackFrameDelimiter: "<frame>")
+
 let root = try t.segBeginGeneric(name: "my-segment")
-	// note: using default SQL Obfuscation method and default SQL trace rollup
-	let sub = try t.segBeginDataStore(parentSegmentId: root,
-	table: "my-table", operation: .INSERT,
-	sql: "INSERT INTO table(field) value('000-000-0000')")
-		let s2 = try t.segBeginExternal(parentSegmentId: sub,
-		host: "perfect.org", name: "my-seg")
-		try t.segEnd(s2)
-	try t.segEnd(sub)
+// do some generic operations in this transaction
 try t.segEnd(root)
+
+// NOTE: it will automatically obfuscate the sql input and rollup if failed as well
+let sub = try t.segBeginDataStore(table: "my-table", operation: .INSERT, sql: "INSERT INTO table(field) value('000-000-0000')")
+// do some data operations in this transaction
+try t.segEnd(sub)
+
+let s2 = try t.segBeginExternal(host: "perfect.org", name: "my-seg")
+// do some external operations in this transaction
+try t.segEnd(s2)
 ```
 
 Parameters:

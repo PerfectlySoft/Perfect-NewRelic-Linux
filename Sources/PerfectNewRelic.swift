@@ -203,7 +203,7 @@ public class NewRelic {
   /// - parameters:
   ///   - megabytes: Double, amount of memory currently being used
   /// - throws:
-  ///   Panic
+  ///   Exception
   public func recordMemory(megabytes: Double) throws {
     let r = newrelic_record_memory_usage(megabytes)
     guard r == 0 else { throw Exception(rawValue: r) ?? Exception.OTHER }
@@ -214,7 +214,7 @@ public class NewRelic {
   ///   - timeSeconds: Double, number of seconds CPU spent processing user-level code
   ///   - usagePercent: Double, CPU user time as a percentage of CPU capacity
   /// - throws:
-  ///   Panic
+  ///   Exception
   public func recordCPU(timeSeconds: Double, usagePercent: Double) throws {
     let r = newrelic_record_cpu_usage(timeSeconds, usagePercent)
     guard r == 0 else { throw Exception(rawValue: r) ?? Exception.OTHER }
@@ -225,7 +225,7 @@ public class NewRelic {
   ///   - name: name of the metric.
   ///   - value: value of the metric.
   /// - throws:
-  ///   Panic
+  ///   Exception
   public func recordMetric(name: String, value: Double) throws {
     let r = newrelic_record_metric(name, value)
     guard r == 0 else { throw Exception(rawValue: r) ?? Exception.OTHER }
@@ -237,7 +237,7 @@ public class NewRelic {
   /// - parameters:
   ///   - enabled: true for enabled and false for disabled
   /// - throws:
-  ///   Panic
+  ///   Exception
   public func enableInstrumentation(_ enabled: Bool) {
     newrelic_enable_instrumentation(enabled ? 1 :  0)
   }//end func
@@ -246,7 +246,7 @@ public class NewRelic {
   /// - parameters:
   ///   - callback: status callback function to register
   /// - throws:
-  ///   Panic
+  ///   Exception
   public func registerStatus(callback: @escaping (Int32) -> Void ) {
     newrelic_register_status_callback(callback)
   }//end func
@@ -259,7 +259,7 @@ public class NewRelic {
   ///   - language:  name of application programming language
   ///   - version:  application programming language version
   /// - throws:
-  ///   Panic
+  ///   Exception
   public func register(license: String, appName: String, language: String = "Swift", version: String = "3.1") throws {
     let r = newrelic_init(license, appName, language, version)
     guard r == 0 else { throw Exception(rawValue: r) ?? Exception.OTHER }
@@ -270,7 +270,7 @@ public class NewRelic {
   /// - parameters:
   ///   - reason: for shutdown request
   /// - throws:
-  ///   Panic
+  ///   Exception
   public func shutdown(reason: String) throws {
     let r = newrelic_request_shutdown(reason)
     guard r == 0 else { throw Exception(rawValue: r) ?? Exception.OTHER }
@@ -306,13 +306,13 @@ public class Transaction {
   ///   - attributes: transaction attributes, pair of "name: value"
   ///   - maxTraceSegments: Set the maximum number of trace segments allowed in a transaction trace. By default, the maximum is set to 2000, which means the first 2000 segments in a transaction will create trace segments if the transaction exceeds the trace threshold (4 x apdex_t).
   /// - throws:
-  ///   Panic
+  ///   Exception
   public init(_ instance: NewRelic,
     webType: Bool? = nil,
     category: String? = nil,
     name: String? = nil,
     url: String? = nil,
-    attributes: [String: String],
+    attributes: [String: String] = [:],
     maxTraceSegments: Int? = nil
   ) throws {
     parent = instance
@@ -355,7 +355,7 @@ public class Transaction {
   ///   - stackTrace: stacktrace when error occurred
   ///   - stackFrameDelimiter: delimiter to split stack trace into frames
   /// - throws:
-  ///   Panic
+  ///   Exception
   public func setErrorNotice(exceptionType: String, errorMessage: String, stackTrace: String, stackFrameDelimiter: String) throws {
     let r = parent.newrelic_transaction_notice_error(id, exceptionType, errorMessage, stackTrace, stackFrameDelimiter)
     guard r == 0 else { throw NewRelic.Exception(rawValue: r) ?? NewRelic.Exception.OTHER }
@@ -368,10 +368,10 @@ public class Transaction {
   ///   - parentSegmentId: id of parent segment, root segment by default.
   ///   - name: name to represent segment
   /// - throws:
-  ///   Panic
+  ///   Exception
   public func segBeginGeneric(parentSegmentId: Int = NewRelic.ROOT_SEGMENT, name: String) throws -> Int {
     let r = parent.newrelic_segment_generic_begin(id, Int32(parentSegmentId), name)
-    guard r == 0 else { throw NewRelic.Exception(rawValue: r) ?? NewRelic.Exception.OTHER }
+    guard r >= 0 else { throw NewRelic.Exception(rawValue: r) ?? NewRelic.Exception.OTHER }
     return Int(r)
   }
 
@@ -407,10 +407,10 @@ public class Transaction {
   ///   - operation: name of the sql operation
   ///   - sql: the sql string
   /// - throws:
-  ///   Panic
+  ///   Exception
   public func segBeginDataStore(parentSegmentId: Int = NewRelic.ROOT_SEGMENT, table: String, operation: SQLOperations, sql: String) throws -> Int {
     let r = parent.newrelic_segment_datastore_begin(id, Int32(parentSegmentId), table, operation.rawValue, sql, nil, parent.newrelic_basic_literal_replacement_obfuscator)
-    guard r == 0 else { throw NewRelic.Exception(rawValue: r) ?? NewRelic.Exception.OTHER }
+    guard r >= 0 else { throw NewRelic.Exception(rawValue: r) ?? NewRelic.Exception.OTHER }
     return Int(r)
   }
 
@@ -420,10 +420,10 @@ public class Transaction {
   ///   - host: name of the host of the external call
   ///   - name:  name of the external transaction
   /// - throws:
-  ///   Panic
+  ///   Exception
   public func segBeginExternal(parentSegmentId: Int = NewRelic.ROOT_SEGMENT, host: String, name: String) throws -> Int {
     let r = parent.newrelic_segment_external_begin(id, Int32(parentSegmentId), host, name)
-    guard r == 0 else { throw NewRelic.Exception(rawValue: r) ?? NewRelic.Exception.OTHER }
+    guard r >= 0 else { throw NewRelic.Exception(rawValue: r) ?? NewRelic.Exception.OTHER }
     return Int(r)
   }
 
@@ -431,7 +431,7 @@ public class Transaction {
   /// - parameters:
   ///   - segId: id of the segment to end
   /// - throws:
-  ///   Panic
+  ///   Exception
   public func segEnd(_ segId: Int) throws {
     let r = parent.newrelic_segment_end(id, Int32(segId))
     guard r == 0 else { throw NewRelic.Exception(rawValue: r) ?? NewRelic.Exception.OTHER }
