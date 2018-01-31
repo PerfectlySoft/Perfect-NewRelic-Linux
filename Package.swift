@@ -1,3 +1,5 @@
+// swift-tools-version:4.0
+// The swift-tools-version declares the minimum version of Swift required to build this package.
 //
 //  Package.swift
 //  Perfect-NewRelic-Linux
@@ -16,8 +18,24 @@
 //
 //===----------------------------------------------------------------------===//
 //
+
 import PackageDescription
 
 let package = Package(
-    name: "PerfectNewRelic"
+    name: "PerfectNewRelic",
+    products: [
+        .library(
+            name: "PerfectNewRelic",
+            targets: ["PerfectNewRelic"]),
+    ],
+    dependencies: [
+    ],
+    targets: [
+        .target(
+            name: "PerfectNewRelic",
+            dependencies: []),
+        .testTarget(
+            name: "PerfectNewRelicTests",
+            dependencies: ["PerfectNewRelic"]),
+    ]
 )

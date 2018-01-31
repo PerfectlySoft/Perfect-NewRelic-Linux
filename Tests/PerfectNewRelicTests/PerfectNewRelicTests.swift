@@ -18,7 +18,9 @@
 //
 
 import XCTest
-import SwiftGlibc
+import Foundation
+import Dispatch
+import Glibc
 @testable import PerfectNewRelic
 
 class PerfectNewRelicTests: XCTestCase {
