@@ -23,10 +23,10 @@
 
 <p align="center">
     <a href="https://developer.apple.com/swift/" target="_blank">
-        <img src="https://img.shields.io/badge/Swift-3.0-orange.svg?style=flat" alt="Swift 3.0">
+        <img src="https://img.shields.io/badge/Swift-4.0-orange.svg?style=flat" alt="Swift 4.0">
     </a>
     <a href="https://developer.apple.com/swift/" target="_blank">
-        <img src="https://img.shields.io/badge/Platforms-OS%20X%20%7C%20Linux%20-lightgray.svg?style=flat" alt="Platforms OS X | Linux">
+        <img src="https://img.shields.io/badge/Platforms-Linux%20-lightgray.svg?style=flat" alt="Linux">
     </a>
     <a href="http://perfect.org/licensing.html" target="_blank">
         <img src="https://img.shields.io/badge/License-Apache-lightgrey.svg?style=flat" alt="License Apache">
@@ -45,7 +45,7 @@ This package builds with Swift Package Manager and is part of the [Perfect](http
 
 ## Release Note
 
-This project is only compatible with Ubuntu 16.04 and Swift 3.1 Tool Chain.
+This project is only compatible with Ubuntu 16.04 and Swift 4.0.3 Tool Chain.
 
 ## Quick Start
 
@@ -62,14 +62,15 @@ During the installation, it will automatically ask for **license key**, **applic
 Configure Package.swift:
 
 ``` swift
-.Package(url: "https://github.com/PerfectlySoft/Perfect-NewRelic-linux.git", majorVersion: 1)
+.Package(url: "https://github.com/PerfectlySoft/Perfect-NewRelic-linux.git", majorVersion: 3)
 ```
 
-Import library into your code ( ⚠️**NOTE**⚠️ Since Swift 3.1 on linux has a significant linker issue, so module `PerfectNewRelic` must be accompanied with `Foundation`):
+Import library into your code ( ⚠️**NOTE**⚠️ Since Swift 4.0.3 on linux has a significant linker issue, so module `PerfectNewRelic` must be accompanied with `Foundation` and `Dispatch`):
 
 ``` swift
 import PerfectNewRelic
 import Foundation
+import Dispatch
 ```
 
 Aside of Swift - C syntax conversion differences, document can be found on [New Relic Agent SDK](https://docs.newrelic.com/docs/agents/agent-sdk/using-agent-sdk/using-agent-sdk)
