@@ -17,11 +17,9 @@
 //===----------------------------------------------------------------------===//
 //
 
-#if os(Linux)
-import SwiftGlibc
-#else
-import Darwin
-#endif
+import Foundation
+import Dispatch
+import Glibc
 
 /// NewRelic Swift Agent SDK
 public class NewRelic {
