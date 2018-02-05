@@ -19,7 +19,12 @@
 
 import Foundation
 import Dispatch
-import Glibc
+
+#if os(Linux)
+    import SwiftGlibc
+#else
+    import Darwin
+#endif
 
 /// NewRelic Swift Agent SDK
 public class NewRelic {
